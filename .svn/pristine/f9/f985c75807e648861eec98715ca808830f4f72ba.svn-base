@@ -1,0 +1,151 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+namespace GameStateManagement
+{
+    class Bucket
+    {
+        #region Fields
+        public static int MaxWater = 100;
+        public Vector2 position;
+        public Vector2 motion;
+        //static float paddleSpeed = 600.0f;
+
+
+        public static Texture2D texture;
+
+        public static WaterType Type 
+        { 
+            get { return type; }
+            set { type = value; } 
+        }
+        private static WaterType type = WaterType.Normal;
+
+        public static int waterCount = 20;
+
+        KeyboardState keyboardState;
+        GamePadState gamePadState;
+
+        #endregion
+
+        #region Initialize
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+
+        public Bucket(Texture2D texture, Rectangle screenBounds)
+        {
+            Bucket.texture = texture;
+            SetInStartPosition(screenBounds);
+        }
+
+        public Bucket(Rectangle screenBounds)
+        {
+            if (texture == null)
+                throw new Exception("Need to initialize bucket's texture.");
+            SetInStartPosition(screenBounds);
+        }
+
+        #endregion
+
+        #region Update and Methods
+
+        public void Update(GameTime gameTime)
+        {
+            motion = Vector2.Zero;
+            keyboardState = Keyboard.GetState();
+            gamePadState = GamePad.GetState(PlayerIndex.One);
+
+            if (keyboardState.IsKeyDown(Keys.Left) ||
+                gamePadState.IsButtonDown(Buttons.LeftThumbstickLeft) ||
+                gamePadState.IsButtonDown(Buttons.DPadLeft))
+                motion.X = -1;
+
+            if (keyboardState.IsKeyDown(Keys.Right) ||
+                gamePadState.IsButtonDown(Buttons.LeftThumbstickRight) ||
+                gamePadState.IsButtonDown(Buttons.DPadRight))
+                motion.X = 1;
+
+            motion.X *= Level.BucketSpeed * (float)gameTime.ElapsedGameTime.TotalSeconds;
+            position += motion;
+
+            HandlePositioning();
+        } // end update
+
+        public void HandlePositioning()
+        {
+            if (position.X < 0)
+                position.X = 0;
+
+            if (position.X + texture.Width > Resolution.GetMiniGameResolution().Width)
+                position.X = Resolution.GetMiniGameResolution().Width - texture.Width;
+        }
+
+        public void SetInStartPosition(Rectangle bounds)
+        {
+            position.X = (bounds.Width - texture.Width) / 2;
+            position.Y = bounds.Height - texture.Height - 5;
+        } // end SetInStartPosition()
+
+        public void Draw(SpriteBatch spriteBatch, Vector2 translatedPosition, Vector2 scale)
+        {
+            //spriteBatch.Draw(image, bucketPosition, Color.White);
+            spriteBatch.Draw(texture, translatedPosition, GetBounds(), Color.White, 0.0f, Vector2.Zero, scale, SpriteEffects.None, 0.0f);
+        } // end Draw()
+
+        public void DrawWaterCount(SpriteBatch spriteBatch, Vector2 translatedPosition, Vector2 scale, SpriteFont font)
+        {
+            spriteBatch.DrawString(font, waterCount + "/" + MaxWater, translatedPosition, Color.White, 0.0f, Vector2.Zero, scale, SpriteEffects.None, 0.0f);
+        }
+
+        public Rectangle GetBounds()
+        {
+            return new Rectangle((int)position.X, (int)position.Y, texture.Width, texture.Height);
+        } // end GetBounds()
+
+        public Vector2 GetMotion()
+        {
+            return motion;
+        }
+        #endregion
+
+        /// <summary>
+        /// Handles increasing/decreasing waterCount
+        /// </summary>
+        /// <param name="waterChange"></param>
+        #region Water Count Handlers
+
+        public bool DecreaseWaterCount( int waterChange )
+        {
+            if (waterCount >= waterChange)
+            {
+                waterCount -= waterChange;
+                return true;
+            }
+
+            return false;
+            
+        } // end DecreaseWaterCount()
+
+        public void IncreaseWaterCount(int waterChange)
+        {
+            waterCount += waterChange;
+
+            if (waterCount > MaxWater)
+                waterCount = MaxWater;
+        } // end IncreaseWaterCount()
+
+        public bool CanShoot()
+        {
+            return waterCount >= Ball.MaxHealth;
+        }
+
+        #endregion
+    }
+}

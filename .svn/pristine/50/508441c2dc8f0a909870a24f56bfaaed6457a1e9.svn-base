@@ -1,0 +1,343 @@
+﻿#region Using Statements
+using System;
+using System.Threading;
+using System.Diagnostics;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+using System.Collections.Generic;
+using Microsoft.Xna.Framework.Audio;
+#endregion
+
+namespace GameStateManagement
+{
+    /// <summary>
+    /// This screen implements the actual game logic. It is just a
+    /// placeholder to get the idea across: you'll probably want to
+    /// put some more interesting gameplay in here!
+    /// </summary>
+    class FireScreen : MiniGameScreen
+    {
+        #region Fields
+
+        Texture2D background;
+        public Texture2D invincFireTexture;
+        public Texture2D fireTexture;
+        Texture2D deathLine;
+
+        Texture2D ballNormal;
+        Texture2D ballFireGood;
+        Texture2D ballTreeGood;
+
+        SoundEffect fireExtinguishSound;
+        SoundEffect fireSpreadSound;
+        SoundEffect shootWaterSound;
+        SoundEffect defeatSound;
+
+        List<Ball> balls;
+
+        SpriteFont gameFont;
+
+        Bucket bucket;
+
+        FireObject[,] fireGrid;
+        public bool lost;
+
+        #endregion
+
+        #region Initialization
+
+
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        public FireScreen(GameScreenPosition gameScreenPosition)
+        {
+            ScreenPosition = gameScreenPosition;
+            lost = false;
+        }
+
+
+        /// <summary>
+        /// Load graphics content for the game.
+        /// </summary>
+        public void LoadContent(ContentManager content, ScreenManager screenManager)
+        {
+            gameFont = content.Load<SpriteFont>("gamefont");
+            background = content.Load<Texture2D>("Background/FireScreenBackGround");
+            fireTexture = content.Load<Texture2D>("Sprite/FireObject");
+            invincFireTexture = content.Load<Texture2D>("Sprite/InvincFireObject");
+
+            ballNormal = content.Load<Texture2D>("Sprite/NormalWater");
+            ballFireGood = content.Load<Texture2D>("Sprite/FireGoodWater");
+            ballTreeGood = content.Load<Texture2D>("Sprite/TreeGoodWater");
+
+            fireExtinguishSound = content.Load<SoundEffect>("Sound/FireExtinguish");
+            fireSpreadSound = content.Load<SoundEffect>("Sound/FireSpread");
+            shootWaterSound = content.Load<SoundEffect>("Sound/ShootWater");
+            defeatSound = content.Load<SoundEffect>("Sound/Defeat");
+
+            // Initialize bucket
+            bucket = new Bucket (Resolution.GetMiniGameResolution());
+            balls = new List<Ball>();
+            //balls = new Ball(ballNormal, WaterType.Normal, bucket.GetBounds(), Resolution.GetMiniGameResolution());
+
+
+            fireGrid = Level.FireGrid;
+            screenManager.Game.ResetElapsedTime();
+            deathLine = new Texture2D(screenManager.GraphicsDevice, 1, 1, false, SurfaceFormat.Color);
+            deathLine.SetData(new[] { Color.White });
+        }
+
+
+
+        /// <summary>
+        /// Unload graphics content used by the game.
+        /// </summary>
+        public void UnloadContent()
+        {
+        }
+
+
+        #endregion
+
+        #region Update and Draw
+
+        /// <summary>
+        /// Updates the state of the game. This method checks the GameScreen.IsActive
+        /// property, so the game will stop updating when the pause menu is active,
+        /// or if you tab away to a different application.
+        /// </summary>
+        public void Update(GameTime gameTime)
+        {
+            for (int i = 0; i < balls.Count; i++)
+            {
+                balls[i].Update(gameTime);
+                if (!balls[i].IsAlive())
+                {
+                    balls.RemoveAt(i);
+                    i--;
+                }
+            }
+            HandleFireCollisions();
+            if (IsActive())
+            {
+                for (int i = 0; i < balls.Count; i++)
+                {
+                    balls[i].PaddleCollision(bucket);
+                }
+            }
+            if (IsActive())
+                bucket.Update(gameTime);
+            UpdateFireObjects(gameTime);
+        }
+
+        private void HandleFireCollisions()
+        {
+            for (int i = 0; i < fireGrid.GetLength(0); i++)
+            {
+                for (int j = 0; j < fireGrid.GetLength(1); j++)
+                {
+                    if (IsValidFireObjectPosition(i, j) && fireGrid[i, j] != null)
+                    {
+                        HandleBallCollisions(i, j);
+                    }
+                }
+            }
+        }
+        private void HandleBallCollisions(int x, int y)
+        {
+            for (int i = 0; i < balls.Count; i++)
+            {
+                if (balls[i].CollidesWithFireObject(fireGrid[x, y]) && fireGrid[x, y].Type != FireObjectType.Invincible)
+                {
+                    balls[i].LoseHealth();
+                    if (fireGrid[x, y].OnCollision(balls[i].Type))
+                    {
+                        Spread(x, y);
+                        balls.RemoveAt(i);
+                        i--;
+                    }
+                    if (!fireGrid[x, y].IsAlive())
+                    {
+                        fireGrid[x, y] = null;
+                        fireExtinguishSound.Play();
+                        return;
+                    }
+                }
+            }
+        }
+
+        private void UpdateFireObjects(GameTime gameTime)
+        {
+            for (int i = 0; i < fireGrid.GetLength(0); i++)
+            {
+                for (int j = 0; j < fireGrid.GetLength(1); j++)
+                {
+                    if (IsValidFireObjectPosition(i, j) && fireGrid[i, j] != null)
+                    {
+                        if (fireGrid[i, j].Update(gameTime))
+                            Spread(i, j);
+                        if (j == fireGrid.GetLength(1) - 1) //If fire reaches the 'bottom'
+                            OnLose();
+                    }
+                }
+            }
+        }
+
+        private bool IsValidFireObjectPosition(int x, int y)
+        {
+            if (y % 2 == 1) //shorter row
+                return (x >= 0 && x < fireGrid.GetLength(0) - 1 && y >= 0 && y < fireGrid.GetLength(1));
+            else
+                return (x >= 0 && x < fireGrid.GetLength(0) && y >= 0 && y < fireGrid.GetLength(1));
+        }
+
+        private Vector2 GetFireObjectPosition(int x, int y)
+        {
+            if (y % 2 == 1) //shorter row
+                return new Vector2(x * fireTexture.Width + (fireTexture.Width / 2), y * fireTexture.Height);
+            else
+                return new Vector2(x * fireTexture.Width, y * fireTexture.Height);
+        }
+
+        private void Spread(int x, int y)
+        {
+            fireSpreadSound.Play();
+            AddFireObject(x - 1, y);
+            AddFireObject(x + 1, y);
+            if (y % 2 == 0) //longer row
+                x--;
+            AddFireObject(x, y - 1);
+            AddFireObject(x, y + 1);
+            AddFireObject(x + 1, y - 1);
+            AddFireObject(x + 1, y + 1);
+        }
+
+        private void AddFireObject(int x, int y)
+        {
+            if(IsValidFireObjectPosition(x, y) && fireGrid[x, y] == null)
+                fireGrid[x, y] = new FireObject(FireObjectType.Normal, fireTexture, GetFireObjectPosition(x, y));
+        }
+
+        private void OnLose()
+        {
+            lost = true;
+            defeatSound.Play();
+            //screenManager.AddScreen(new GameOverMenuScreen(), ControllingPlayer);
+            //Game over
+        }
+
+        /// <summary>
+        /// Lets the game respond to player input. Unlike the Update method,
+        /// this will only be called when the gameplay screen is active.
+        /// </summary>
+        public void HandleInput(InputState input)
+        {
+            if (input == null)
+                throw new ArgumentNullException("input");
+
+            KeyboardState keyboardState = input.CurrentKeyboardStates[0];
+            GamePadState gamePadState = input.CurrentGamePadStates[0];
+
+            bool gamePadDisconnected = !input.CurrentGamePadStates[0].IsConnected &&
+                                       input.GamePadWasConnected[0];
+
+            if (input.IsNewKeyPress(Keys.Space))
+            {
+                if (balls.Count < Level.MaxBalls && bucket.CanShoot())
+                {
+                    Ball thisBall = new Ball(GetBallTexture(), Bucket.Type, bucket.GetBounds(), Resolution.GetMiniGameResolution());
+                    thisBall.SetInMotion(bucket);
+                    balls.Add(thisBall);
+                    bucket.DecreaseWaterCount(Ball.MaxHealth);
+                    if (!bucket.CanShoot())
+                    {
+                        Bucket.Type = WaterType.Normal;
+                    }
+                    shootWaterSound.Play();
+                }
+            }
+        }
+
+        private Texture2D GetBallTexture()
+        {
+            if (Bucket.Type == WaterType.Normal)
+            {
+                return ballNormal;
+            }
+            else if (Bucket.Type == WaterType.FireGood)
+            {
+                return ballFireGood;
+            }
+            else
+            {
+                return ballTreeGood;
+            }
+        }
+
+
+        /// <summary>
+        /// Draws the gameplay screen.
+        /// </summary>
+        public void Draw(GameTime gameTime, SpriteBatch spriteBatch)
+        {
+            spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, null, null, null, null, Resolution.getTransformationMatrix());
+
+            spriteBatch.Draw(background, screen, Color.White);
+            DrawFireObjects(gameTime, spriteBatch);
+            for (int i = 0; i < balls.Count; i++)
+            {
+                if (balls[i].IsMoving || IsActive())
+                {
+                    balls[i].Draw(spriteBatch, TranslatePosition(balls[i].Position), SpriteScale);
+                    balls[i].DrawHealthCount(spriteBatch, TranslatePosition(balls[i].Position), SpriteScale, gameFont);
+                }
+            }
+            if (IsActive()) //Draw bucket if current window is active
+            {
+
+                if (bucket.CanShoot() && balls.Count < Level.MaxBalls)
+                {
+                    Vector2 translatedPosition = TranslatePosition(new Vector2(Bucket.position.X + bucket.GetBounds().Width / 2 - GetBallTexture().Width / 2, Bucket.position.Y - GetBallTexture().Height));
+                    spriteBatch.Draw(GetBallTexture(), translatedPosition, GetBallTexture().Bounds, Color.White, 0.0f, Vector2.Zero, SpriteScale, SpriteEffects.None, 0.0f);
+                }
+                Vector2 translatedBucketPosition = TranslatePosition(Bucket.position);
+                bucket.Draw(spriteBatch, translatedBucketPosition, SpriteScale);
+                bucket.DrawWaterCount(spriteBatch, translatedBucketPosition, SpriteScale, gameFont);
+            }
+            DrawLine(spriteBatch, deathLine, 1, Color.Black, TranslatePosition(new Vector2(0, Resolution.GetMiniGameResolution().Height - (4 * fireTexture.Height / .75f))), TranslatePosition(new Vector2(Resolution.GetMiniGameResolution().Width, Resolution.GetMiniGameResolution().Height - (4 * fireTexture.Height / .75f))));
+            spriteBatch.End();
+        }
+
+        private void DrawLine(SpriteBatch batch, Texture2D blank,
+              float width, Color color, Vector2 point1, Vector2 point2)
+        {
+            float angle = (float)Math.Atan2(point2.Y - point1.Y, point2.X - point1.X);
+            float length = Vector2.Distance(point1, point2);
+
+            batch.Draw(blank, point1, null, color,
+                       angle, Vector2.Zero, new Vector2(length, width),
+                       SpriteEffects.None, 0);
+        }
+
+        private void DrawFireObjects(GameTime gameTime, SpriteBatch spriteBatch)
+        {
+            for (int i = 0; i < fireGrid.GetLength(0); i++)
+            {
+                for (int j = 0; j < fireGrid.GetLength(1); j++)
+                {
+                    if (fireGrid[i, j] != null)
+                    {
+                        fireGrid[i, j].Draw(spriteBatch, TranslatePosition(GetFireObjectPosition(i, j)), SpriteScale);
+                    }
+                }
+            }
+
+        }
+
+
+        #endregion
+    }
+}

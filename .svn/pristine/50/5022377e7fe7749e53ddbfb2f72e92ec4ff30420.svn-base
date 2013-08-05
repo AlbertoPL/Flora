@@ -1,0 +1,150 @@
+#region File Description
+//-----------------------------------------------------------------------------
+// BackgroundScreen.cs
+//
+// Microsoft XNA Community Game Platform
+// Copyright (C) Microsoft Corporation. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+#region Using Statements
+using System;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+#endregion
+
+namespace GameStateManagement
+{
+    /// <summary>
+    /// The background screen sits behind all the other menu screens.
+    /// It draws a background image that remains fixed in place regardless
+    /// of whatever transitions the screens on top of it may be doing.
+    /// </summary>
+    class VictoryScreen : GameScreen
+    {
+        #region Fields
+
+        ContentManager content;
+        Texture2D backgroundTexture;
+        int nextLevel;
+        bool dialogOpen;
+        VictoryBoxScreen dialogue;
+
+        #endregion
+
+        #region Initialization
+
+
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        public VictoryScreen(int nextLevel)
+        {
+            this.nextLevel = nextLevel;
+            TransitionOnTime = TimeSpan.FromSeconds(0.5);
+            TransitionOffTime = TimeSpan.FromSeconds(0.5);
+        }
+
+
+        /// <summary>
+        /// Loads graphics content for this screen. The background texture is quite
+        /// big, so we use our own local ContentManager to load it. This allows us
+        /// to unload before going from the menus into the game itself, wheras if we
+        /// used the shared ContentManager provided by the Game class, the content
+        /// would remain loaded forever.
+        /// </summary>
+        public override void LoadContent()
+        {
+            if (content == null)
+                content = new ContentManager(ScreenManager.Game.Services, "Content");
+
+            backgroundTexture = content.Load<Texture2D>("Background/background");
+            dialogue = new VictoryBoxScreen(nextLevel);
+            dialogOpen = true;
+        }
+
+
+        /// <summary>
+        /// Unloads graphics content for this screen.
+        /// </summary>
+        public override void UnloadContent()
+        {
+            content.Unload();
+        }
+
+        /// <summary>
+        /// Responds to user input, accepting or cancelling the message box.
+        /// </summary>
+        public override void HandleInput(InputState input)
+        {
+
+
+            // We pass in our ControllingPlayer, which may either be null (to
+            // accept input from any player) or a specific index. If we pass a null
+            // controlling player, the InputState helper returns to us which player
+            // actually provided the input. We pass that through to our Accepted and
+            // Cancelled events, so they can tell which player triggered them.
+            KeyboardState keyboardState = input.CurrentKeyboardStates[1];
+            GamePadState gamePadState = input.CurrentGamePadStates[1];
+
+            // The game pauses either if the user presses the pause button, or if
+            // they unplug the active gamepad. This requires us to keep track of
+            // whether a gamepad was ever plugged in, because we don't want to pause
+            // on PC if they are playing with a keyboard and have no gamepad at all!
+            bool gamePadDisconnected = !gamePadState.IsConnected &&
+                                       input.GamePadWasConnected[1];
+
+            if (input.IsNewKeyPress(Keys.A) || input.IsNewButtonPress(Buttons.X))
+            {
+                LoadingScreen.Load(ScreenManager, true, PlayerIndex.One, new GameplayScreen(nextLevel));
+                ExitScreen();    
+            }
+        }
+
+        #endregion
+
+        #region Update and Draw
+
+
+        /// <summary>
+        /// Updates the background screen. Unlike most screens, this should not
+        /// transition off even if it has been covered by another screen: it is
+        /// supposed to be covered, after all! This overload forces the
+        /// coveredByOtherScreen parameter to false in order to stop the base
+        /// Update method wanting to transition off.
+        /// </summary>
+        public override void Update(GameTime gameTime, bool otherScreenHasFocus,
+                                                       bool coveredByOtherScreen)
+        {
+            base.Update(gameTime, otherScreenHasFocus, false);
+            if (dialogOpen)
+            {
+                dialogOpen = false;
+                ScreenManager.AddScreen(dialogue, PlayerIndex.One);
+            }
+        }
+
+
+        /// <summary>
+        /// Draws the background screen.
+        /// </summary>
+        public override void Draw(GameTime gameTime)
+        {
+            SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
+            Rectangle viewport = Resolution.GetVirtualResolution();
+            Rectangle fullscreen = new Rectangle(0, 0, viewport.Width, viewport.Height);
+
+            spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, null, null, null, null, Resolution.getTransformationMatrix());
+
+            spriteBatch.Draw(backgroundTexture, fullscreen,
+                             new Color(TransitionAlpha, TransitionAlpha, TransitionAlpha));
+
+            spriteBatch.End();
+        }
+
+
+        #endregion
+    }
+}

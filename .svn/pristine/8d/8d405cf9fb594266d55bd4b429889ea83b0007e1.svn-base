@@ -1,0 +1,91 @@
+#region File Description
+//-----------------------------------------------------------------------------
+// OptionsMenuScreen.cs
+//
+// Microsoft XNA Community Game Platform
+// Copyright (C) Microsoft Corporation. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+#region Using Statements
+using Microsoft.Xna.Framework;
+#endregion
+
+namespace GameStateManagement
+{
+    /// <summary>
+    /// The options screen is brought up over the top of the main menu
+    /// screen, and gives the user a chance to configure the game
+    /// in various hopefully useful ways.
+    /// </summary>
+    class LevelSelectMenuScreen : MenuScreen
+    {
+        #region Fields
+
+        MenuEntry level1;
+        MenuEntry level2;
+        MenuEntry level3;
+
+        #endregion
+
+        #region Initialization
+
+
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        public LevelSelectMenuScreen()
+            : base("Options")
+        {
+            // Create our menu entries.
+            level1 = new MenuEntry("Level 1");
+            level2 = new MenuEntry("Level 2");
+            level3 = new MenuEntry("Level 3");
+
+            MenuEntry back = new MenuEntry("Back");
+
+            // Hook up menu event handlers.
+            level1.Selected += LevelOneMenuEntrySelected;
+            level2.Selected += LevelTwoMenuEntrySelected;
+            level3.Selected += LevelThreeMenuEntrySelected;
+            back.Selected += OnCancel;
+            
+            // Add entries to the menu.
+            MenuEntries.Add(level1);
+            MenuEntries.Add(level2);
+            MenuEntries.Add(level3);
+            MenuEntries.Add(back);
+        }
+
+        #endregion
+
+        #region Handle Input
+
+
+        /// <summary>
+        /// Event handler for when the Level One menu entry is selected.
+        /// </summary>
+        void LevelOneMenuEntrySelected(object sender, PlayerIndexEventArgs e)
+        {
+            LoadingScreen.Load(ScreenManager, true, e.PlayerIndex, new GameplayScreen(1));
+        }
+
+        /// <summary>
+        /// Event handler for when the Level One menu entry is selected.
+        /// </summary>
+        void LevelTwoMenuEntrySelected(object sender, PlayerIndexEventArgs e)
+        {
+            LoadingScreen.Load(ScreenManager, true, e.PlayerIndex, new GameplayScreen(2));
+        }
+
+        /// <summary>
+        /// Event handler for when the Level One menu entry is selected.
+        /// </summary>
+        void LevelThreeMenuEntrySelected(object sender, PlayerIndexEventArgs e)
+        {
+            LoadingScreen.Load(ScreenManager, true, e.PlayerIndex, new GameplayScreen(3));
+        }
+
+        #endregion
+    }
+}

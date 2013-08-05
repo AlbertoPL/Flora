@@ -1,0 +1,178 @@
+#region File Description
+//-----------------------------------------------------------------------------
+// BackgroundScreen.cs
+//
+// Microsoft XNA Community Game Platform
+// Copyright (C) Microsoft Corporation. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+#region Using Statements
+using System;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+using System.Collections.Generic;
+#endregion
+
+namespace GameStateManagement
+{
+    /// <summary>
+    /// Pic->pic->dialogue->how to play->menu
+    /// </summary>
+    class InstructionScreen : GameScreen
+    {
+        #region Fields
+        System.Timers.Timer timer;
+        Boolean isScreenChangeTime = false;
+        Boolean isDone = false;
+        Boolean dialogueOpen = false;
+
+        int screenNum;
+        DialogueBoxScreen dialogue;
+        ContentManager c;
+
+        Texture2D bg;
+
+        
+        #endregion
+
+        #region Initialization
+        
+
+
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        public InstructionScreen(int number)
+        {
+            
+            screenNum = number;
+
+            TransitionOnTime = TimeSpan.FromSeconds(0.5);
+            TransitionOffTime = TimeSpan.FromSeconds(0.5);
+            timer = new System.Timers.Timer(1000);
+            timer.Elapsed += new System.Timers.ElapsedEventHandler(NextPicture);
+            
+        }
+
+        public void NextPicture(object o,System.Timers.ElapsedEventArgs timedEvent)
+        {
+            timer.Enabled = false;
+            isScreenChangeTime = true;
+           
+        }
+
+        /// <summary>
+        /// Loads graphics content for this screen. The background texture is quite
+        /// big, so we use our own local ContentManager to load it. This allows us
+        /// to unload before going from the menus into the game itself, wheras if we
+        /// used the shared ContentManager provided by the Game class, the content
+        /// would remain loaded forever.
+        /// </summary>
+        public override void LoadContent()
+        {
+            if (c == null)
+                c = new ContentManager(ScreenManager.Game.Services, "Content");
+
+            if (screenNum == 1)
+            {
+                bg = c.Load<Texture2D>("Background\\Instructions_1");
+                timer.Enabled = true;
+            }
+            else if (screenNum == 2)
+            {
+                bg = c.Load<Texture2D>("Background\\Instructions_2");
+                timer.Enabled = true;
+            }
+            else if (screenNum == 3)
+            {
+                bg = c.Load<Texture2D>("Background\\Instructions_3");
+                List<String> listOfMessages = new List<string>();
+                listOfMessages.Add("I hate life.");
+                listOfMessages.Add("Goodbye cruel world.");
+                listOfMessages.Add("x_x");
+           
+                dialogue = new DialogueBoxScreen(listOfMessages, screenNum);
+                dialogueOpen = true;
+               
+            }
+            else
+            {
+                bg = c.Load<Texture2D>("Background\\Instructions_3");
+                isDone = true;
+            }
+            
+        }
+
+        /// <summary>
+        /// Unloads graphics content for this screen.
+        /// </summary>
+        public override void UnloadContent()
+        {
+           //c.Unload();
+        }
+
+
+        #endregion
+
+        #region Update and Draw
+
+
+        /// <summary>
+        /// Updates the background screen. Unlike most screens, this should not
+        /// transition off even if it has been covered by another screen: it is
+        /// supposed to be covered, after all! This overload forces the
+        /// coveredByOtherScreen parameter to false in order to stop the base
+        /// Update method wanting to transition off.
+        /// </summary>
+        public override void Update(GameTime gameTime, bool otherScreenHasFocus,
+                                                       bool coveredByOtherScreen)
+        {
+            base.Update(gameTime, otherScreenHasFocus, false);
+           
+            if (isDone)
+            {
+               isDone = false;
+                ScreenManager.RemoveScreen(this);
+                LoadingScreen.Load(ScreenManager, true, null, new BackgroundScreen(), new MainMenuScreen());
+            }
+            else if (isScreenChangeTime)
+            {
+                isScreenChangeTime = false;
+                ScreenManager.AddScreen(new InstructionScreen(++screenNum), PlayerIndex.One);
+                this.ExitScreen();
+            }
+            else if (dialogueOpen)
+            {
+                dialogueOpen = false;
+                ScreenManager.AddScreen(dialogue, PlayerIndex.One);
+            }
+
+           
+            
+        }
+
+
+        /// <summary>
+        /// Draws the background screen.
+        /// </summary>
+        public override void Draw(GameTime gameTime)
+        {
+            SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
+            Rectangle viewport = Resolution.GetVirtualResolution();
+            Rectangle fullscreen = new Rectangle(0, 0, viewport.Width, viewport.Height);
+
+            spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, null, null, null, null, Resolution.getTransformationMatrix());
+
+            spriteBatch.Draw(bg, fullscreen,
+                             new Color(TransitionAlpha, TransitionAlpha, TransitionAlpha));
+
+            spriteBatch.End();
+        }
+
+
+        #endregion
+    }
+}

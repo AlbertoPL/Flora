@@ -1,0 +1,365 @@
+#region File Description
+//-----------------------------------------------------------------------------
+// BackgroundScreen.cs
+//
+// Microsoft XNA Community Game Platform
+// Copyright (C) Microsoft Corporation. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+#region Using Statements
+using System;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+using System.Collections.Generic;
+#endregion
+
+namespace GameStateManagement
+{
+    /// <summary>
+    /// Pic->pic->dialogue->how to play->menu
+    /// </summary>
+    class InstructionScreen : GameScreen
+    {
+        #region Fields
+        System.Timers.Timer timer;
+        Boolean isScreenChangeTime = false;
+        Boolean isDone = false;
+        Boolean dialogueOpen = false;
+
+        int screenNum;
+        DialogueBoxScreen dialogue;
+        ContentManager c;
+
+        Texture2D bg;
+        Texture2D tutorialDrops;
+        Texture2D tutorialBucket;
+        Texture2D tutorialWaterScreen;
+        Texture2D tutorialTreeScreen;
+        Texture2D tutorialFireScreen;
+
+        
+        #endregion
+
+        #region Initialization
+        
+
+
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        public InstructionScreen(int number)
+        {
+            
+            screenNum = number;
+
+            TransitionOnTime = TimeSpan.FromSeconds(0.5);
+            TransitionOffTime = TimeSpan.FromSeconds(0.5);
+            timer = new System.Timers.Timer(1000);
+            timer.Elapsed += new System.Timers.ElapsedEventHandler(NextPicture);
+            
+        }
+
+        public void NextPicture(object o,System.Timers.ElapsedEventArgs timedEvent)
+        {
+            timer.Enabled = false;
+            isScreenChangeTime = true;
+           
+        }
+
+        /// <summary>
+        /// Loads graphics content for this screen. The background texture is quite
+        /// big, so we use our own local ContentManager to load it. This allows us
+        /// to unload before going from the menus into the game itself, wheras if we
+        /// used the shared ContentManager provided by the Game class, the content
+        /// would remain loaded forever.
+        /// </summary>
+        public override void LoadContent()
+        {
+            if (c == null)
+                c = new ContentManager(ScreenManager.Game.Services, "Content");
+            if (screenNum == 1)
+            {
+                bg = c.Load<Texture2D>("Background\\Instructions_1");
+                timer.Enabled = true;
+            }
+            else if (screenNum == 2)
+            {
+                bg = c.Load<Texture2D>("Background\\Instructions_1");
+                List<String> listOfMessages = new List<string>();
+                listOfMessages.Add("Flora:  Puck... awaken.\n");
+
+                dialogue = new DialogueBoxScreen(this, listOfMessages, screenNum, true);
+                dialogueOpen = true;
+            }
+            else if (screenNum == 3)
+            {
+                bg = c.Load<Texture2D>("Background\\Instructions_2");
+                timer.Enabled = true;
+            }
+            else if (screenNum == 4)
+            {
+                bg = c.Load<Texture2D>("Background\\Instructions_3");
+                List<String> listOfMessages = new List<string>();
+                listOfMessages.Add("Puck:   Hello Flora... ");
+                listOfMessages.Add("Flora:  I am in want of thine assistance. My precious children, the ents, are under siege from the evil fire god. ");
+                listOfMessages.Add("Flora:  He has summoned an army of fire golems to destroy the ents and lay waste to their forest. ");
+                listOfMessages.Add("Flora:  Thou art my youngest and most remarkable child. Journey to the forest to amend this crisis and save thine brothers and sisters. ");
+                listOfMessages.Add("Flora:  Go, make haste!  Take heart, for I shall be watching over thou. ");
+                listOfMessages = FormatDialogueList(listOfMessages);
+
+                dialogue = new DialogueBoxScreen(this, listOfMessages, screenNum, false);
+                dialogueOpen = true;
+            }
+            else if (screenNum == 5)
+            {
+                bg = c.Load<Texture2D>("Background\\FireScreenBackground");
+                List<String> listOfMessages = new List<string>();
+                listOfMessages.Add("Puck:   There's a lot of fire golems out there...you want me to defend against all of them? ");
+                listOfMessages.Add("Flora:  Be patient youngling, for I shall explain. ");
+                listOfMessages = FormatDialogueList(listOfMessages);
+
+                dialogue = new DialogueBoxScreen(this, listOfMessages, screenNum, false);
+                dialogueOpen = true;
+            }
+            else if (screenNum == 6)
+            {
+                bg = c.Load<Texture2D>("Background\\WaterScreenBackground"); // has no bucket
+                List<String> listOfMessages = new List<string>();
+                listOfMessages.Add("Puck:   ...what's with the rain? ");
+                listOfMessages.Add("Flora:  I have provided you noble puck with the eternal raincloud. The water is imbued with the magic needed to strengthen the ents. ");
+                listOfMessages.Add("Puck:   So how do I get it to them? ");
+                listOfMessages = FormatDialogueList(listOfMessages);
+
+                dialogue = new DialogueBoxScreen(this, listOfMessages, screenNum, false);
+                dialogueOpen = true;
+            }
+            else if (screenNum == 7)
+            {
+                bg = c.Load<Texture2D>("Background\\WaterScreenBackground"); //has a bucket
+                tutorialBucket = c.Load<Texture2D>("Sprite\\tutorialBucket");
+                List<String> listOfMessages = new List<string>();
+                listOfMessages.Add("Flora:  Take this bucket. ");
+                listOfMessages.Add("Puck:   ...A bucket? ");
+                listOfMessages.Add("Flora:  Yes. ");
+                listOfMessages.Add("Puck:   What good is a bucket for fighting fire golems? ");
+                listOfMessages.Add("Flora:  Use the arrow keys to collect water in the bucket. ");
+                listOfMessages.Add("Puck:   Oh.  You sure it has to be a bucket? ");
+                listOfMessages.Add("Flora:  Yes. ");
+                listOfMessages.Add("Puck:   Fine.  Wait, why don't you just move the rainclouds over the fire to put it out? ");
+                listOfMessages = FormatDialogueList(listOfMessages);
+
+                dialogue = new DialogueBoxScreen(this, listOfMessages, screenNum, false);
+                dialogueOpen = true;
+            }
+            else if (screenNum == 8)
+            {
+                bg = c.Load<Texture2D>("Background\\WaterScreenBackground"); //has a green drop
+                List<String> listOfMessages = new List<string>();
+                listOfMessages.Add("Flora:  Magic be a very fickle thing, Puck. Sometimes the rain will help the fire golems, making them spread faster. ");
+                listOfMessages.Add("Puck:   Interesting...then why don't you just move the rainclouds so they rain on the ents, to grow them faster than the fire can spread? ");
+                listOfMessages = FormatDialogueList(listOfMessages);
+
+                dialogue = new DialogueBoxScreen(this, listOfMessages, screenNum, false);
+                dialogueOpen = true;
+            }
+            else if (screenNum == 9)
+            {
+                bg = c.Load<Texture2D>("Background\\WaterScreenBackground"); //has a red drop
+                tutorialDrops = c.Load<Texture2D>("Sprite\\Tutorial");
+                List<String> listOfMessages = new List<string>();
+                listOfMessages.Add("Flora:  I cannot move the raincloud, I just told you that magic is very " +
+                                            "fickle. Sometimes this raincloud will drop special colored drops. ");
+                listOfMessages.Add("Flora:  The red ones douse fire quicker and the green ones grow ents " +
+                                            "faster. But be warned: These drops have terrible consequences should " +
+                                            "you use them incorrectly. ");
+                listOfMessages.Add("Puck:   What does that rainbow drop do? ");
+                listOfMessages.Add("Flora: ...I'm not sure. ");
+                listOfMessages.Add("Puck: Whaddaya mean you're not sure!? " + 
+                                          "It's your raincloud how can you not-- ");
+                listOfMessages.Add("Flora: Magic.");
+                listOfMessages.Add("Puck:  -sigh- Fine then. I'll use this bucket to take the water to both. " +
+                                          "What's next? ");
+                listOfMessages = FormatDialogueList(listOfMessages);
+
+                dialogue = new DialogueBoxScreen(this, listOfMessages, screenNum, false);
+                dialogueOpen = true;
+            }
+            else if (screenNum == 10)
+            {
+                bg = c.Load<Texture2D>("Background\\FireScreenBackground");
+                List<String> listOfMessages = new List<string>();
+                listOfMessages.Add("Flora:  Now you must extinguish the fire golems. ");
+                listOfMessages.Add("Flora:  The greater fire golems are impervious to water, only a mighty army of ents could defeat them; but the lesser fire golems are very vulnerable to water. ");
+                listOfMessages.Add("Puck:   With a bucket... of water... I'm supposed to put out an army of fire golems?");
+                listOfMessages.Add("Flora:  Yes, but this is no ordinary bucket of water. It can withstand the strength of a fire golem. ");
+                listOfMessages.Add("Flora:  Press the space bar to throw water at the golems. The water is rather bouncy and will bounce off of multiple golems. ");
+                listOfMessages.Add("Flora:  Use the arrow keys to position the bucket under your waterdrop to keep it bouncing. ");
+                listOfMessages.Add("Flora:  But be careful. The water will dissipate over time. ");
+                listOfMessages.Add("Puck:   And the water doesn't just put out all the fire or last forever because, let me guess: magic is fickle? ");
+                listOfMessages.Add("Flora:  Yes. ");
+                listOfMessages = FormatDialogueList(listOfMessages);
+
+                dialogue = new DialogueBoxScreen(this, listOfMessages, screenNum, false);
+                dialogueOpen = true;
+            }
+            else if (screenNum == 11)
+            {
+                bg = c.Load<Texture2D>("Background\\ForestScreenBackground");
+                List<String> listOfMessages = new List<string>();
+                listOfMessages.Add("Puck:   ...ok, what's next? ");
+                listOfMessages.Add("Flora:  While the fire is in check, you should use the water to nourish the ents; once you grow enough they can take down the fire golem and save this part of the forest. ");
+                listOfMessages.Add("Puck:   Is there more bouncing water? ");
+                listOfMessages.Add("Flora:  Yes. You must water each seed enough times to turn it into an ent, which will create more seeds for you to water. ");
+                listOfMessages.Add("Flora:  Once there are enough ents, they will stomp out the rest of the remaining fire golems as well. ");
+                listOfMessages = FormatDialogueList(listOfMessages); 
+                
+                dialogue = new DialogueBoxScreen(this, listOfMessages, screenNum, false);
+                dialogueOpen = true;
+            }
+            else if (screenNum == 12)
+            {
+                bg = c.Load<Texture2D>("Background\\Instructions_3");
+                List<String> listOfMessages = new List<string>();
+                listOfMessages.Add("Flora:  Once you save this area of the forest, you will need to save the rest of it. The fire is weakest here, it will get stronger as you advance. ");
+                listOfMessages.Add("Flora:  However, I will do my best to assist you with these more difficult enemies. ");
+                listOfMessages.Add("Flora:  Dost thou comprehend? ");
+                listOfMessages = FormatDialogueList(listOfMessages); 
+                
+                dialogue = new DialogueBoxScreen(this, listOfMessages, screenNum, false);
+                dialogueOpen = true;
+            }
+            else if (screenNum == 13)
+            {
+                bg = c.Load<Texture2D>("Background\\Instructions_3");
+                List<String> listOfMessages = new List<string>();
+                listOfMessages.Add("Puck:   It's not that complicated, I can handle it. Collect water, kill fire, water ents. ");
+                listOfMessages.Add("Puck:   Are you sure it has to be a bucket? ");
+                listOfMessages.Add("Flora:  PUCK, GO! ");
+                listOfMessages = FormatDialogueList(listOfMessages); 
+                
+                dialogue = new DialogueBoxScreen(this, listOfMessages, screenNum, false);
+                dialogueOpen = true;
+            }
+            else
+            {
+                bg = c.Load<Texture2D>("Background\\Instructions_3");
+                isDone = true;
+            }
+            
+        }
+
+        private List<string> FormatDialogueList(List<string> theDialogues)
+        {
+            int lineLength = 65;
+            List<string> toReturn = new List<string>();
+            for (int i = 0; i < theDialogues.Count; i++)
+            {
+                String currentDialogue = "";
+                while (theDialogues[i].Length > lineLength) // for each part of the string that's too long
+                {
+                    //Grab part of it, remove that part from the original string to continue working with
+                    currentDialogue += theDialogues[i].Substring(0, lineLength);
+                    theDialogues[i] = theDialogues[i].Remove(0, lineLength);
+                    //If in the middle of a word, grab the rest of the word
+                    if (theDialogues[i].Contains(" "))
+                    {
+                        currentDialogue += theDialogues[i].Substring(0, theDialogues[i].IndexOf(' '));
+                        theDialogues[i] = theDialogues[i].Remove(0, theDialogues[i].IndexOf(' '));
+                    }
+                    //Enter a new line if necessary
+                    if (theDialogues[i].Length > 0)
+                        currentDialogue += "\n";
+                }
+                //Add the leftovers of any line not big enough
+                if (theDialogues[i].Length > 0)
+                {
+                    currentDialogue += theDialogues[i];
+                }
+                toReturn.Add(currentDialogue);
+            }
+            return toReturn;
+        }
+
+        /// <summary>
+        /// Unloads graphics content for this screen.
+        /// </summary>
+        public override void UnloadContent()
+        {
+           c.Unload();
+        }
+
+
+        #endregion
+
+        #region Update and Draw
+
+
+        /// <summary>
+        /// Updates the background screen. Unlike most screens, this should not
+        /// transition off even if it has been covered by another screen: it is
+        /// supposed to be covered, after all! This overload forces the
+        /// coveredByOtherScreen parameter to false in order to stop the base
+        /// Update method wanting to transition off.
+        /// </summary>
+        public override void Update(GameTime gameTime, bool otherScreenHasFocus,
+                                                       bool coveredByOtherScreen)
+        {
+            base.Update(gameTime, otherScreenHasFocus, false);
+           
+            if (isDone)
+            {
+                isDone = false;
+                LoadingScreen.Load(ScreenManager, false, null, new BackgroundScreen(), new MainMenuScreen());
+                this.ExitScreen();
+            }
+            else if (isScreenChangeTime)
+            {
+                isScreenChangeTime = false;
+                ScreenManager.AddScreen(new InstructionScreen(++screenNum), PlayerIndex.One);
+                this.ExitScreen();
+            }
+            else if (dialogueOpen)
+            {
+                dialogueOpen = false;
+                ScreenManager.AddScreen(dialogue, PlayerIndex.One);
+            }
+        }
+
+
+        /// <summary>
+        /// Draws the background screen.
+        /// </summary>
+        public override void Draw(GameTime gameTime)
+        {
+            SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
+            Rectangle viewport = Resolution.GetVirtualResolution();
+            //Rectangle fullscreen = new Rectangle(0, 0, viewport.Width, viewport.Height);
+            Rectangle position = new Rectangle(viewport.Width / 2 - bg.Width / 2, viewport.Height / 2 - bg.Height / 2, bg.Width, bg.Height);
+
+            spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, null, null, null, null, Resolution.getTransformationMatrix());
+
+            ScreenManager.GraphicsDevice.Clear(Color.Black);
+            spriteBatch.Draw(bg, position,
+                                 Color.White);
+            if (tutorialDrops != null)
+            {
+                Rectangle dropPosition = new Rectangle(viewport.Width / 2 - tutorialDrops.Width / 2, 0, tutorialDrops.Width, tutorialDrops.Height);
+                spriteBatch.Draw(tutorialDrops, dropPosition,
+                                 new Color(TransitionAlpha, TransitionAlpha, TransitionAlpha));
+            }
+
+            else if (tutorialBucket != null)
+            {
+                spriteBatch.Draw(tutorialBucket, position,
+                                 new Color(TransitionAlpha, TransitionAlpha, TransitionAlpha));
+            }
+            spriteBatch.End();
+        }
+
+
+        #endregion
+    }
+}

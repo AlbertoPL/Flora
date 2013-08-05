@@ -1,0 +1,220 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+
+namespace GameStateManagement
+{
+    class Ball
+    {
+        Vector2 motion = Vector2.Zero;
+        Random random = new Random();
+
+        public static int MaxHealth = 5;
+        public int Health
+        {
+            get { return health; }
+        }
+        int health = MaxHealth;
+
+        public bool IsMoving
+        {
+            get { return motion != Vector2.Zero; }
+        }
+
+        public Rectangle RectangleBounds
+        {
+            get { return new Rectangle((int)position.X, (int)position.Y, texture.Width, texture.Height); }
+        }
+
+        public Circle CircleBounds
+        {
+            get { return new Circle(new Vector2(RectangleBounds.Center.X, RectangleBounds.Center.Y), texture.Width/2); }
+        }
+
+        public Vector2 Position
+        {
+            get { return position; }
+            set { position = value; }
+        }
+        Vector2 position;
+
+        //float ballSpeed = 400.0f;
+
+        public static Texture2D texture;
+        Rectangle screenBounds;
+
+        public Ball(Texture2D texture, Rectangle startPosition, Rectangle screenBounds)
+        {
+            Ball.texture = texture;
+            this.screenBounds = screenBounds;
+            SetInStartPosition(startPosition);
+        }
+
+        public void Update(GameTime gameTime)
+        {
+            if(IsMoving)
+                motion.Normalize();
+            position += motion * Level.BallSpeed * (float)gameTime.ElapsedGameTime.TotalSeconds;
+            CheckWallCollision();
+        }
+
+        private void CheckWallCollision()
+        {
+            if (position.X < 0)
+            {
+                position.X = 0;
+                motion.X *= -1;
+                if (IsMoving && Math.Abs(motion.Y) < .5f)
+                {
+                    if (motion.Y < 0)
+                    {
+                        motion.Y = -.5f;
+                    }
+                    else
+                    {
+                        motion.Y = .5f;
+                    }
+                }
+            }
+            if (position.X + texture.Width > screenBounds.Width)
+            {
+                position.X = screenBounds.Width - texture.Width;
+                motion.X *= -1;
+                if (IsMoving && Math.Abs(motion.Y) < .5f)
+                {
+                    if (motion.Y < 0)
+                    {
+                        motion.Y = -.5f;
+                    }
+                    else
+                    {
+                        motion.Y = .5f;
+                    }
+                }
+            }
+            if (position.Y < 0)
+            {
+                position.Y = 0;
+                motion.Y *= -1;
+            }
+            if (position.Y > screenBounds.Height + screenBounds.Height/4)
+                OnDeath();
+        }
+
+        public void SetInStartPosition(Rectangle paddleLocation)
+        {
+            health = MaxHealth;
+            motion = Vector2.Zero;
+            position.Y = paddleLocation.Y - texture.Height;
+            position.X = paddleLocation.X + (texture.Width / 2);
+        }
+
+        public void OnDeath()
+        {
+            health = MaxHealth;
+            motion = Vector2.Zero;
+        }
+
+        public void SetInMotion(Bucket bucket)
+        {
+            if(!IsMoving) 
+            {
+                float initYSpeed;
+                initYSpeed = (float) random.NextDouble();
+                if (initYSpeed < .5f)
+                    initYSpeed += .5f;
+
+                motion = new Vector2(bucket.GetMotion().X / 2, -initYSpeed);
+            }
+        }
+
+        public bool OffBottom()
+        {
+            if (position.Y > screenBounds.Height)
+                return true;
+            return false;
+        }
+
+        public void PaddleCollision(Bucket bucket)
+        {
+            Rectangle paddleLocation = bucket.GetBounds();
+            if (paddleLocation.Intersects(RectangleBounds))
+            {
+                position.Y = paddleLocation.Y - texture.Height;
+
+                if (RectangleBounds.X >= paddleLocation.X + paddleLocation.Width * .75f)
+                {
+                    //motion = new Vector2(1, -.75f);
+                    motion.X *= -1;
+                    motion.Y *= -.75f;
+                }
+                else if (RectangleBounds.X <= paddleLocation.X + paddleLocation.Width * .25f)
+                {
+                    //motion = new Vector2(1, -.75f);
+                    motion.X *= -1;
+                    motion.Y *= -.75f;
+                }
+                else
+                    motion.Y *= -1;
+
+                // Set a minimum Y-motion angle
+                if ( IsMoving && Math.Abs(motion.Y) < .5f )
+                {
+                    motion.Y = -.5f;
+                }
+
+                if (IsMoving && bucket.GetMotion().X != 0)
+                {
+                    motion.X += bucket.GetMotion().X*.2f;
+                }
+            }
+        }
+
+        public bool CollidesWithObject(Circle objectBounds)
+        {
+            Circle bounds = CircleBounds;
+            if (objectBounds.Intersects(bounds))
+            {
+                Vector2 ballToObject = bounds.Center - objectBounds.Center;
+                Vector2 ballToObjectN = ballToObject;
+                ballToObjectN.Normalize();
+                
+                Vector2 velDiffProjected = ballToObjectN * Vector2.Dot(motion, ballToObjectN);
+                motion -= velDiffProjected;
+
+                //Move the ball out of the object
+                float distanceToMove = objectBounds.Radius + bounds.Radius - ballToObject.Length();
+                ballToObject.Normalize();
+                ballToObject *= distanceToMove;
+                position += ballToObject;
+
+                return true;
+            }
+            return false;
+        }
+
+        public void LoseHealth()
+        {
+            health--;
+        }
+
+        public bool IsAlive()
+        {
+            return health > 0;
+        }
+
+        public void Draw(SpriteBatch spriteBatch, Vector2 translatedPosition, Vector2 scale)
+        {
+            spriteBatch.Draw(texture, translatedPosition, texture.Bounds, Color.White, 0.0f, Vector2.Zero, scale, SpriteEffects.None, 0.0f);
+        }
+
+        public void DrawHealthCount(SpriteBatch spriteBatch, Vector2 translatedPosition, Vector2 scale, SpriteFont font)
+        {
+            spriteBatch.DrawString(font, "" + health, translatedPosition, Color.White, 0.0f, Vector2.Zero, scale, SpriteEffects.None, 0.0f);
+        }
+    }
+}
